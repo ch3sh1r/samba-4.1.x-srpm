@@ -2,7 +2,7 @@
 %bcond_with testsuite
 
 # Heavily tweaked to roll back Fedora 18 version for RHEL 6 compatibility
-%define main_release 0.3
+%define main_release 0.5
 
 %define samba_version 4.0.3
 %define talloc_version 2.0.8
@@ -76,7 +76,6 @@ Source0:        samba-%{version}%{pre_release}.tar.bz2
 # Red Hat specific replacement-files
 Source1: samba.log
 Source2: samba.xinetd
-Source3: swat.desktop
 Source4: smb.conf.default
 Source5: pam_winbind.conf
 Source6: samba.pamd
@@ -216,6 +215,9 @@ Requires: logrotate
 
 Provides: samba4-common = %{samba_depver}
 Obsoletes: samba4-common < %{samba_depver}
+# swat has been discarded upstream
+Conflicts: samba-swat
+Conflicts: samba4-swat
 
 %description common
 samba4-common provides files necessary for both the server and client
@@ -348,23 +350,6 @@ Obsoletes: samba4-pidl < %{samba_depver}
 %description pidl
 The samba4-pidl package contains the Perl IDL compiler used by Samba
 and Wireshark to parse IDL and similar protocols
-
-### SWAT
-%package swat
-Summary: The Samba SMB server Web configuration program
-Group: Applications/System
-Requires: %{name} = %{samba_depver}
-Requires: %{name}-common = %{samba_depver}
-Requires: %{name}-libs = %{samba_depver}
-Requires: xinetd
-
-Provides: samba4-swat = %{samba_depver}
-Obsoletes: samba4-swat < %{samba_depver}
-
-%description swat
-The samba-swat package includes the new SWAT (Samba Web Administration
-Tool), for remotely managing Samba's smb.conf file using your favorite
-Web browser.
 
 ### TEST
 %package test
@@ -580,7 +565,6 @@ install -d -m 0755 %{buildroot}/var/lib/samba/scripts
 install -d -m 0755 %{buildroot}/var/lib/samba/sysvol
 install -d -m 0755 %{buildroot}/var/log/samba/old
 install -d -m 0755 %{buildroot}/var/spool/samba
-install -d -m 0755 %{buildroot}/%{_datadir}/swat/using_samba
 install -d -m 0755 %{buildroot}/var/run/samba
 install -d -m 0755 %{buildroot}/var/run/winbindd
 install -d -m 0755 %{buildroot}/%{_libdir}/samba
@@ -602,18 +586,11 @@ install -m 0644 %{SOURCE4} %{buildroot}%{_sysconfdir}/samba/smb.conf
 install -d -m 0755 %{buildroot}%{_sysconfdir}/security
 install -m 0644 %{SOURCE5} %{buildroot}%{_sysconfdir}/security/pam_winbind.conf
 
-# Install pam file for swat
-install -d -m 0755 %{buildroot}%{_sysconfdir}/pam.d
-install -m 0644 %{SOURCE6} %{buildroot}%{_sysconfdir}/pam.d/samba
-
 echo 127.0.0.1 localhost > %{buildroot}%{_sysconfdir}/samba/lmhosts
 
 # openLDAP database schema
 install -d -m 0755 %{buildroot}%{_sysconfdir}/openldap/schema
 install -m644 examples/LDAP/samba.schema %{buildroot}%{_sysconfdir}/openldap/schema/samba.schema
-
-install -d -m 0755 %{buildroot}%{_sysconfdir}/xinetd.d
-install -m644 %{SOURCE2} %{buildroot}%{_sysconfdir}/xinetd.d/swat
 
 install -m 0744 packaging/printing/smbprint %{buildroot}%{_bindir}/smbprint
 
@@ -676,6 +653,11 @@ rm -rf %{buildroot}%{perl_vendorlib}/Parse/Yapp
 %check
 TDB_NO_FSYNC=1 make %{?_smp_mflags} test
 %endif
+
+# Discard swat
+rm -rf %{buildroot}%{_datadir}/samba/swat
+rm -f %{buildroot}%{_sbindir}/swat
+rm -f %{buildroot}%{_mandir}/man8/swat.8*
 
 %post
 %if %with_systemd
@@ -981,13 +963,13 @@ rm -rf %{buildroot}
 %{_libdir}/samba/gensec
 %dir /var/lib/samba/sysvol
 %{_datadir}/samba/setup
-%{_mandir}/man8/samba.8.gz
-%{_mandir}/man8/samba-tool.8.gz
+%{_mandir}/man8/samba.8*
+%{_mandir}/man8/samba-tool.8*
 %else # with_dc
 # rpmbuild in RHEL 6 does not deal well with pre-instlaled log files
 %doc packaging/RHEL-rpm/README.dc
-%exclude %{_mandir}/man8/samba.8.gz
-%exclude %{_mandir}/man8/samba-tool.8.gz
+%exclude %{_mandir}/man8/samba.8*
+%exclude %{_mandir}/man8/samba-tool.8*
 %endif # with_dc
 
 ### DC-LIBS
@@ -1376,16 +1358,6 @@ rm -rf %{buildroot}
 %defattr(-,root,root,-)
 %{python_sitearch}/*
 
-### SWAT
-%files swat
-%defattr(-,root,root)
-%config(noreplace) %{_sysconfdir}/xinetd.d/swat
-%config(noreplace) %{_sysconfdir}/pam.d/samba
-%{_datadir}/samba/swat
-%{_sbindir}/swat
-%{_mandir}/man8/swat.8*
-#%attr(755,root,root) %{_libdir}/samba/*.msg
-
 ### TEST
 %files test
 %defattr(-,root,root)
@@ -1463,6 +1435,9 @@ rm -rf %{buildroot}
 %{_mandir}/man7/winbind_krb5_locator.7*
 
 %changelog
+* Mon Feb 25 2013 - Nico Kadel-Garcia <nkadel@gmail.com> - 0:4.0.3-0.3noswat
+- Discard swat, upstream is no longer maintaining it.
+
 * Fri Feb 22 2013 - Nico Kadel-Garcia <nkadel@gmail.com> - 0:4.0.3-0.4
 - Renumber init scrpt files in alphabetical order, for consistency
   with samba4 package from RHEL 6.
