@@ -1,7 +1,7 @@
 # Set --with testsuite or %bcond_without to run the Samba torture testsuite.
 %bcond_with testsuite
 
-%define samba_version 4.1.6
+%define samba_version 4.1.7
 %define main_release 0.1
 # This should be rc1 or nil
 %define pre_release %nil
